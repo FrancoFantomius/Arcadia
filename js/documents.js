@@ -59,6 +59,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function splitTextNodeToFit(textNode, destination) {
+        if (!textNode || !textNode.textContent) return false;
+        const tokens = textNode.textContent.split(/(\s+)/);
+        const moved = [];
+
+        while (tokens.length > 0 && textNode.parentElement?.scrollHeight > textNode.parentElement?.clientHeight) {
+            moved.unshift(tokens.pop());
+            textNode.textContent = tokens.join('');
+        }
+
+        // If splitting by words did not reduce overflow enough (e.g. very long token),
+        // continue splitting by characters.
+        while (textNode.textContent.length > 0 && textNode.parentElement?.scrollHeight > textNode.parentElement?.clientHeight) {
+            moved.unshift(textNode.textContent.slice(-1));
+            textNode.textContent = textNode.textContent.slice(0, -1);
+        }
+
+        if (moved.length === 0) return false;
+        destination.insertBefore(document.createTextNode(moved.join('')), destination.firstChild);
+        if (textNode.textContent === '') textNode.remove();
+        return true;
+    }
+
     // --- Overflow detection & pagination ---
     function checkOverflow() {
         const pages = getPages();
@@ -75,17 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lastChild = page.lastChild;
 
                 if (lastChild.nodeType === Node.TEXT_NODE) {
-                    const words = lastChild.textContent.split(/(\s+)/);
-                    const movedText = [];
-                    while (words.length > 0 && page.scrollHeight > page.clientHeight) {
-                        movedText.unshift(words.pop());
-                        lastChild.textContent = words.join('');
-                    }
-                    if (movedText.length > 0) {
-                        const newTextNode = document.createTextNode(movedText.join(''));
-                        next.insertBefore(newTextNode, next.firstChild);
-                    }
-                    if (lastChild.textContent === '') lastChild.remove();
+                    splitTextNodeToFit(lastChild, next);
                     continue;
                 }
 
@@ -109,20 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const innerLast = lastChild.lastChild;
 
                         if (innerLast.nodeType === Node.TEXT_NODE) {
-                            const words = innerLast.textContent.split(/(\s+)/);
-                            const movedText = [];
-                            
-                            while (words.length > 0 && page.scrollHeight > page.clientHeight) {
-                                movedText.unshift(words.pop());
-                                innerLast.textContent = words.join('');
-                            }
-                            
-                            if (movedText.length > 0) {
-                                const newTextNode = document.createTextNode(movedText.join(''));
-                                targetNode.insertBefore(newTextNode, targetNode.firstChild);
-                                splitHappened = true;
-                            }
-                            if (innerLast.textContent === '') innerLast.remove();
+                            splitHappened = splitTextNodeToFit(innerLast, targetNode) || splitHappened;
                         } else {
                             targetNode.insertBefore(innerLast, targetNode.firstChild);
                             splitHappened = true;
