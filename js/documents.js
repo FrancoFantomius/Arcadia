@@ -404,27 +404,98 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- PDF Export ---
+    // Dynamically load a script and return a promise
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            if (document.querySelector(`script[src="${src}"]`)) {
+                resolve();
+                return;
+            }
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error(`Failed to load ${src}`));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function ensurePdfLibs() {
+        const libs = [
+            'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+            'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'
+        ];
+        for (const src of libs) {
+            await loadScript(src);
+        }
+    }
+
     exportPdfBtn.addEventListener('click', async () => {
-        if (typeof html2pdf === 'undefined') {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-            script.onload = () => generatePdf();
-            document.body.appendChild(script);
-        } else {
-            generatePdf();
+        // Disable button & show feedback
+        exportPdfBtn.disabled = true;
+        const icon = exportPdfBtn.querySelector('.material-symbols-outlined');
+        const origIcon = icon.textContent;
+        icon.textContent = 'hourglass_empty';
+
+        try {
+            await ensurePdfLibs();
+            await generatePdf();
+        } catch (err) {
+            console.error('PDF export failed:', err);
+            alert('PDF export failed. Check the console for details.');
+        } finally {
+            exportPdfBtn.disabled = false;
+            icon.textContent = origIcon;
         }
     });
 
-    function generatePdf() {
-        const opt = {
-            margin: 0,
-            filename: 'ArcadiaDocument.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'], after: '.page' }
-        };
-        html2pdf().from(container).set(opt).save();
+    async function generatePdf() {
+        const { jsPDF } = window.jspdf;
+        // A4 dimensions in mm
+        const pageWidthMM = 210;
+        const pageHeightMM = 297;
+
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4',
+            compress: true
+        });
+
+        const pages = getPages();
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+
+            // Render each page element to a high-resolution canvas
+            const canvas = await html2canvas(page, {
+                scale: 2,                  // 2× resolution for crisp text
+                useCORS: true,             // allow cross-origin images
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                // Capture the full A4 page including padding
+                width: page.offsetWidth,
+                height: page.offsetHeight,
+                windowWidth: page.offsetWidth,
+                windowHeight: page.offsetHeight
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+
+            // Scale the canvas image to fill the A4 page exactly
+            if (i > 0) {
+                pdf.addPage('a4', 'portrait');
+            }
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pageWidthMM, pageHeightMM);
+        }
+
+        // Use the document title input value as the filename
+        const titleInput = document.querySelector('header input[type="text"]');
+        const docName = (titleInput && titleInput.value.trim())
+            ? titleInput.value.trim().replace(/[^a-zA-Z0-9_\- ]/g, '')
+            : 'ArcadiaDocument';
+        pdf.save(`${docName}.pdf`);
     }
 
     // --- Active State UI ---
