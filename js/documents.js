@@ -23,10 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function createPage() {
         const page = document.createElement('div');
         page.className = 'page';
-        page.contentEditable = 'true';
-        page.spellcheck = true;
         container.appendChild(page);
-        bindPageEvents(page);
         return page;
     }
 
@@ -49,6 +46,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return node;
     }
 
+    function ensureContentInsidePages() {
+        const pages = getPages();
+        let targetPage = getActivePage() || pages[0];
+        if (!targetPage) {
+            targetPage = createPage();
+        }
+
+        Array.from(container.childNodes).forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE && node.classList?.contains('page')) return;
+            targetPage.appendChild(node);
+        });
+    }
+
+    function splitTextNodeToFit(textNode, destination) {
+        if (!textNode || !textNode.textContent) return false;
+        const tokens = textNode.textContent.split(/(\s+)/);
+        const moved = [];
+
+        while (tokens.length > 0 && textNode.parentElement?.scrollHeight > textNode.parentElement?.clientHeight) {
+            moved.unshift(tokens.pop());
+            textNode.textContent = tokens.join('');
+        }
+
+        // If splitting by words did not reduce overflow enough (e.g. very long token),
+        // continue splitting by characters.
+        while (textNode.textContent.length > 0 && textNode.parentElement?.scrollHeight > textNode.parentElement?.clientHeight) {
+            moved.unshift(textNode.textContent.slice(-1));
+            textNode.textContent = textNode.textContent.slice(0, -1);
+        }
+
+        if (moved.length === 0) return false;
+        destination.insertBefore(document.createTextNode(moved.join('')), destination.firstChild);
+        if (textNode.textContent === '') textNode.remove();
+        return true;
+    }
+
     // --- Overflow detection & pagination ---
     function checkOverflow() {
         const pages = getPages();
@@ -65,17 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lastChild = page.lastChild;
 
                 if (lastChild.nodeType === Node.TEXT_NODE) {
-                    const words = lastChild.textContent.split(/(\s+)/);
-                    const movedText = [];
-                    while (words.length > 0 && page.scrollHeight > page.clientHeight) {
-                        movedText.unshift(words.pop());
-                        lastChild.textContent = words.join('');
+                    const moved = splitTextNodeToFit(lastChild, next);
+                    if (!moved) {
+                        next.insertBefore(lastChild, next.firstChild);
                     }
-                    if (movedText.length > 0) {
-                        const newTextNode = document.createTextNode(movedText.join(''));
-                        next.insertBefore(newTextNode, next.firstChild);
-                    }
-                    if (lastChild.textContent === '') lastChild.remove();
                     continue;
                 }
 
@@ -99,20 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const innerLast = lastChild.lastChild;
 
                         if (innerLast.nodeType === Node.TEXT_NODE) {
-                            const words = innerLast.textContent.split(/(\s+)/);
-                            const movedText = [];
-                            
-                            while (words.length > 0 && page.scrollHeight > page.clientHeight) {
-                                movedText.unshift(words.pop());
-                                innerLast.textContent = words.join('');
-                            }
-                            
-                            if (movedText.length > 0) {
-                                const newTextNode = document.createTextNode(movedText.join(''));
-                                targetNode.insertBefore(newTextNode, targetNode.firstChild);
+                            const moved = splitTextNodeToFit(innerLast, targetNode);
+                            if (moved) {
+                                splitHappened = true;
+                            } else {
+                                targetNode.insertBefore(innerLast, targetNode.firstChild);
                                 splitHappened = true;
                             }
-                            if (innerLast.textContent === '') innerLast.remove();
                         } else {
                             targetNode.insertBefore(innerLast, targetNode.firstChild);
                             splitHappened = true;
@@ -189,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Bind events on each page ---
+    // --- Bind editor events ---
     function saveCursor() {
         const sel = window.getSelection();
         if (!sel.rangeCount) return null;
@@ -212,21 +231,32 @@ document.addEventListener('DOMContentLoaded', () => {
         marker.remove();
     }
 
-    function bindPageEvents(page) {
-        page.addEventListener('input', () => {
+    function bindEditorEvents() {
+        container.addEventListener('input', () => {
             const marker = saveCursor();
+            ensureContentInsidePages();
             checkOverflow();
             checkUnderflow();
             restoreCursor(marker);
             saveContent();
             updateActiveStates();
         });
-        page.addEventListener('keyup', updateActiveStates);
-        page.addEventListener('mouseup', updateActiveStates);
+        container.addEventListener('paste', () => {
+            requestAnimationFrame(() => {
+                ensureContentInsidePages();
+                checkOverflow();
+                checkUnderflow();
+                saveContent();
+            });
+        });
+        container.addEventListener('keyup', updateActiveStates);
+        container.addEventListener('mouseup', updateActiveStates);
 
         // Navigate between pages with arrow keys
-        page.addEventListener('keydown', (e) => {
+        container.addEventListener('keydown', (e) => {
             const pages = getPages();
+            const page = findParentPage(window.getSelection().anchorNode);
+            if (!page) return;
             const idx = pages.indexOf(page);
 
             if (e.key === 'Backspace') {
@@ -285,74 +315,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Toolbar Command Execution ---
     const exec = (command, value = null) => {
-        const sel = window.getSelection();
-        const pages = getPages();
-
-        // Check if the selection spans multiple pages
-        let multiPage = false;
-        if (sel.rangeCount > 0) {
-            const range = sel.getRangeAt(0);
-            const startPage = findParentPage(range.startContainer);
-            const endPage = findParentPage(range.endContainer);
-
-            if (startPage && endPage && startPage !== endPage) {
-                multiPage = true;
-                const startIdx = pages.indexOf(startPage);
-                const endIdx = pages.indexOf(endPage);
-                // Save boundary info before we manipulate selections
-                const origStartContainer = range.startContainer;
-                const origStartOffset = range.startOffset;
-                const origEndContainer = range.endContainer;
-                const origEndOffset = range.endOffset;
-
-                for (let i = startIdx; i <= endIdx; i++) {
-                    const page = pages[i];
-                    const pageRange = document.createRange();
-
-                    if (i === startIdx) {
-                        pageRange.setStart(origStartContainer, origStartOffset);
-                        if (page.lastChild) {
-                            pageRange.setEndAfter(page.lastChild);
-                        } else {
-                            pageRange.setEnd(page, page.childNodes.length);
-                        }
-                    } else if (i === endIdx) {
-                        if (page.firstChild) {
-                            pageRange.setStartBefore(page.firstChild);
-                        } else {
-                            pageRange.setStart(page, 0);
-                        }
-                        pageRange.setEnd(origEndContainer, origEndOffset);
-                    } else {
-                        pageRange.selectNodeContents(page);
-                    }
-
-                    page.focus();
-                    sel.removeAllRanges();
-                    sel.addRange(pageRange);
-                    document.execCommand(command, false, value);
-                }
-
-                // Restore cross-page selection so it stays visible
-                // and subsequent commands continue to work across all pages
-                const updatedPages = getPages();
-                const first = updatedPages[startIdx];
-                const last = updatedPages[Math.min(endIdx, updatedPages.length - 1)];
-                if (first && last) {
-                    const restoreRange = document.createRange();
-                    restoreRange.setStartBefore(first.firstChild || first);
-                    restoreRange.setEndAfter(last.lastChild || last);
-                    sel.removeAllRanges();
-                    sel.addRange(restoreRange);
-                }
-            }
-        }
-
-        if (!multiPage) {
-            document.execCommand(command, false, value);
-            const active = getActivePage();
-            if (active) active.focus();
-        }
+        document.execCommand(command, false, value);
+        container.focus();
 
         updateActiveStates();
         // Re-check pagination after formatting changes
@@ -524,9 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Init ---
-    // Bind events on the first page
-    const firstPage = getPages()[0];
-    if (firstPage) bindPageEvents(firstPage);
+    bindEditorEvents();
+    container.contentEditable = 'true';
+    container.spellcheck = true;
 
     // Load saved content
     loadContent();
