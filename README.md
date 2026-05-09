@@ -20,10 +20,10 @@ Arcadia is a premium, web-based WYSIWYG document editor designed for a clean, di
 ## Project Structure
 
 - `index.html`: The landing page with a modern glassmorphism design.
-- `editor.html`: The main document editor interface.
+- `documents.html`: The main document editor interface.
 - `privacy.html` & `terms.html`: Static legal pages.
-- `css/`: Contains custom stylesheets (`index.css`, `editor.css`).
-- `js/`: Contains the editor logic (`editor.js`).
+- `css/`: Contains custom stylesheets (`index.css`, `documents.css`).
+- `js/`: Contains the editor logic (`documents.js`).
 - `icons/`: Favicon and application icons.
 
 ## Getting Started
@@ -31,7 +31,7 @@ Arcadia is a premium, web-based WYSIWYG document editor designed for a clean, di
 Since Arcadia is a purely static web application, you can run it without any build steps or server dependencies:
 
 1. Clone or download this repository.
-2. Open `index.html` in any modern web browser to view the landing page, or open `editor.html` directly to start editing.
+2. Open `index.html` in any modern web browser to view the landing page, or open `documents.html` directly to start editing.
 
 Alternatively, you can serve it using any local development server (e.g., Live Server in VS Code, or `npx serve`).
 
