@@ -1,62 +1,61 @@
 <!DOCTYPE html>
-<html lang="it">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="shortcut icon" href="/static/HF-Logo.ico" type="image/x-icon">
-        <link rel="stylesheet" href="/static/editor.css" />
-        <title>Editor</title>
-    </head>
-    <body>
-        <div class="container">
-            <h4 id="title">Doc Editor</h4>
-            <div class="controls">
-                <div class="main-controls">
-                    <div class="dropdown">
-                        <button
-                            class="btn btn-primary dropdown-toggle"
-                            data-bs-toggle="dropdown"
-                        >
-                            File
-                        </button>
-                        <div class="dropdown-menu">
-                            <button id="new-btn" class="dropdown-item">
-                                New
-                            </button>
-                            <button id="txt-btn" class="dropdown-item">
-                                Save as TXT
-                            </button>
-                            <button id="upload" class="dropdown-item">
-                                Save
-                            </button>
-                        </div>
-                    </div>
+<html lang="en">
 
-                    <input id="filename-input" type="text" value="untitled" />
-                </div>
-                <div class="control-btn-container">
-                    <button id="bold-btn" class="btn-format">
-                        <b>b</b>
-                    </button>
-                    <button id="underline-btn" class="btn-format">
-                        <u>u</u>
-                    </button>
-                    <button id="italic-btn" class="btn-format">
-                        <i>i</i>
-                    </button>
-                    <input id="color-btn" type="color" class="btn-color" />
-                </div>
-            </div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcadia</title>
+    <meta name="description" content="Arcadia is a free and open source web-based document editor." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="css/editor.css" />
+    <link rel="icon" href="icons/HF-Logo.ico" />
+</head>
 
-            <div id="content" contenteditable="true" spellcheck="false"></div>
-        </div>
+<body>
+    <header class="toolbar">
+        <!-- Toolbar Buttons -->
+        <button class="tool-button" data-command="bold" title="Bold"><b>B</b></button>
+        <button class="tool-button" data-command="italic" title="Italic"><i>I</i></button>
+        <button class="tool-button" data-command="underline" title="Underline"><u>U</u></button>
+        <select id="fontSelect" title="Content Font">
+            <option value="Inter" selected>Inter</option>
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Times New Roman">Times New Roman</option>
+            <option value="Roboto">Roboto</option>
+            <option value="Calibri">Calibri</option>
+        </select>
+        <select id="fontSizeSelect" title="Font Size">
+            <option value="3">Small</option>
+            <option value="4" selected>Normal</option>
+            <option value="5">Large</option>
+            <option value="6">XL</option>
+        </select>
+        <button class="tool-button" data-command="foreColor" title="Text Color"><span
+                style="border-bottom: 2px solid #ef4444; padding: 0 2px;">A</span></button>
+        <button class="tool-button" data-command="backColor" title="Highlight"><span
+                style="background-color: #fef08a; padding: 0 4px; border-radius: 2px;">A</span></button>
+        <button class="tool-button" data-command="justifyLeft" title="Align Left">↞</button>
+        <button class="tool-button" data-command="justifyCenter" title="Align Center">↔</button>
+        <button class="tool-button" data-command="justifyRight" title="Align Right">↠</button>
+        <button class="tool-button" data-command="insertOrderedList" title="Numbered List">1.</button>
+        <button class="tool-button" data-command="insertUnorderedList" title="Bullet List">•</button>
+        <button class="tool-button" data-command="formatBlock" data-value="H1" title="Heading 1">H1</button>
+        <button class="tool-button" data-command="createLink" title="Insert Link">🔗</button>
+        <button class="tool-button" data-command="undo" title="Undo">↺</button>
+        <button class="tool-button" data-command="redo" title="Redo">↻</button>
+        <input type="file" id="imageInput" accept="image/*" style="display:none;" />
+        <button class="tool-button" id="imageBtn" title="Insert Image">🖼️</button>
+        <button class="tool-button" id="exportPdfBtn" title="Export as PDF">PDF</button>
+    </header>
+    <div id="pages-container">
+        <div class="page" contenteditable="true" spellcheck="true"></div>
+    </div>
+    <script src="Js/editor.js"></script>
+</body>
 
-        <script src="htmltopdf.js"></script>
-        <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4"
-            crossorigin="anonymous"
-        ></script>
-        <script src="/static/editor.js"></script>
-    </body>
 </html>
