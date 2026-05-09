@@ -11,46 +11,135 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="css/editor.css" />
     <link rel="icon" href="icons/HF-Logo.ico" />
 </head>
 
 <body>
-    <header class="toolbar">
-        <!-- Toolbar Buttons -->
-        <button class="tool-button" data-command="bold" title="Bold"><b>B</b></button>
-        <button class="tool-button" data-command="italic" title="Italic"><i>I</i></button>
-        <button class="tool-button" data-command="underline" title="Underline"><u>U</u></button>
-        <select id="fontSelect" title="Content Font">
-            <option value="Inter" selected>Inter</option>
-            <option value="Arial">Arial</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Times New Roman">Times New Roman</option>
-            <option value="Roboto">Roboto</option>
-            <option value="Calibri">Calibri</option>
-        </select>
-        <select id="fontSizeSelect" title="Font Size">
-            <option value="3">Small</option>
-            <option value="4" selected>Normal</option>
-            <option value="5">Large</option>
-            <option value="6">XL</option>
-        </select>
-        <button class="tool-button" data-command="foreColor" title="Text Color"><span
-                style="border-bottom: 2px solid #ef4444; padding: 0 2px;">A</span></button>
-        <button class="tool-button" data-command="backColor" title="Highlight"><span
-                style="background-color: #fef08a; padding: 0 4px; border-radius: 2px;">A</span></button>
-        <button class="tool-button" data-command="justifyLeft" title="Align Left">↞</button>
-        <button class="tool-button" data-command="justifyCenter" title="Align Center">↔</button>
-        <button class="tool-button" data-command="justifyRight" title="Align Right">↠</button>
-        <button class="tool-button" data-command="insertOrderedList" title="Numbered List">1.</button>
-        <button class="tool-button" data-command="insertUnorderedList" title="Bullet List">•</button>
-        <button class="tool-button" data-command="formatBlock" data-value="H1" title="Heading 1">H1</button>
-        <button class="tool-button" data-command="createLink" title="Insert Link">🔗</button>
-        <button class="tool-button" data-command="undo" title="Undo">↺</button>
-        <button class="tool-button" data-command="redo" title="Redo">↻</button>
-        <input type="file" id="imageInput" accept="image/*" style="display:none;" />
-        <button class="tool-button" id="imageBtn" title="Insert Image">🖼️</button>
-        <button class="tool-button" id="exportPdfBtn" title="Export as PDF">PDF</button>
+    <!-- Unsupported Screen Message -->
+    <div id="unsupported-screen">
+        <div class="message-box">
+            <span class="material-symbols-outlined"
+                style="font-size: 48px; color: #64748b; margin-bottom: 16px;">smartphone</span>
+            <h2 style="font-family: 'Google Sans', sans-serif; margin-bottom: 8px; color: #1e293b;">
+                Device too small
+            </h2>
+            <p style="font-family: 'Inter', sans-serif; color: #64748b; font-size: 14px;">
+                Arcadia is designed to support pagination. Please use a device with a larger screen to experience
+                Arcadia.
+            </p>
+        </div>
+    </div>
+    <header
+        style="position: sticky; top: 0; z-index: 10; display: flex; flex-direction: column; background: var(--color-toolbar); backdrop-filter: blur(8px); box-shadow: var(--shadow-sm);">
+        <!-- Top Menu -->
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 8px 16px; border-bottom: 1px solid var(--color-toolbar-border);">
+            <div style="display: flex; align-items: center; gap: 24px;">
+                <!-- Brand -->
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" style="color: #005bbf; font-size: 24px;">description</span>
+                    <span
+                        style="font-size: 18px; font-weight: bold; color: #005bbf; font-family: 'Google Sans', sans-serif;">Arcadia</span>
+                </div>
+                <!-- Document Title & Menu -->
+                <div style="display: flex; flex-direction: column;">
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                        <input type="text" value="Untitled document"
+                            style="font-size: 18px; font-family: 'Google Sans', sans-serif; background: transparent; border: none; outline: none; padding: 4px 8px; border-radius: 4px; width: 200px; color: #111827;"
+                            onfocus="this.style.background='var(--color-hover)'"
+                            onblur="this.style.background='transparent'">
+                    </div>
+                    <div
+                        style="display: flex; gap: 8px; font-size: 14px; margin-top: 4px; padding: 0 4px; color: #414754;">
+                        <span style="cursor: pointer; padding: 2px 6px; border-radius: 4px;"
+                            onmouseover="this.style.background='var(--color-hover)'"
+                            onmouseout="this.style.background='transparent'">File</span>
+                        <span style="cursor: pointer; padding: 2px 6px; border-radius: 4px;"
+                            onmouseover="this.style.background='var(--color-hover)'"
+                            onmouseout="this.style.background='transparent'">Edit</span>
+                        <span style="cursor: pointer; padding: 2px 6px; border-radius: 4px;"
+                            onmouseover="this.style.background='var(--color-hover)'"
+                            onmouseout="this.style.background='transparent'">View</span>
+                        <span style="cursor: pointer; padding: 2px 6px; border-radius: 4px;"
+                            onmouseover="this.style.background='var(--color-hover)'"
+                            onmouseout="this.style.background='transparent'">Insert</span>
+                        <span style="cursor: pointer; padding: 2px 6px; border-radius: 4px;"
+                            onmouseover="this.style.background='var(--color-hover)'"
+                            onmouseout="this.style.background='transparent'">Format</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formatting Toolbar -->
+        <div class="toolbar" style="position: static; box-shadow: none; z-index: auto; border-bottom: none;">
+            <!-- Toolbar Buttons -->
+            <button class="tool-button" data-command="undo" title="Undo"><span
+                    class="material-symbols-outlined">undo</span></button>
+            <button class="tool-button" data-command="redo" title="Redo"><span
+                    class="material-symbols-outlined">redo</span></button>
+            <button class="tool-button" id="exportPdfBtn" title="Export as PDF"><span
+                    class="material-symbols-outlined">print</span></button>
+
+            <div style="width: 1px; height: 24px; background: var(--color-toolbar-border); margin: auto 4px;"></div>
+
+            <select id="fontSelect" title="Content Font">
+                <option value="Inter" selected>Inter</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Roboto">Roboto</option>
+                <option value="Calibri">Calibri</option>
+            </select>
+
+            <select id="fontSizeSelect" title="Font Size">
+                <option value="3">Small</option>
+                <option value="4" selected>Normal</option>
+                <option value="5">Subtitle</option>
+                <option value="6">Title</option>
+            </select>
+
+            <div style="width: 1px; height: 24px; background: var(--color-toolbar-border); margin: auto 4px;"></div>
+
+            <button class="tool-button" data-command="bold" title="Bold"><span class="material-symbols-outlined"
+                    style="font-weight: bold;">format_bold</span></button>
+            <button class="tool-button" data-command="italic" title="Italic"><span class="material-symbols-outlined"
+                    style="font-style: italic;">format_italic</span></button>
+            <button class="tool-button" data-command="underline" title="Underline"><span
+                    class="material-symbols-outlined"
+                    style="text-decoration: underline;">format_underlined</span></button>
+            <button class="tool-button" data-command="foreColor" title="Text Color"><span
+                    class="material-symbols-outlined">format_color_text</span></button>
+            <button class="tool-button" data-command="backColor" title="Highlight"><span
+                    class="material-symbols-outlined">format_color_fill</span></button>
+
+            <div style="width: 1px; height: 24px; background: var(--color-toolbar-border); margin: auto 4px;"></div>
+
+            <button class="tool-button" data-command="justifyLeft" title="Align Left"><span
+                    class="material-symbols-outlined">format_align_left</span></button>
+            <button class="tool-button" data-command="justifyCenter" title="Align Center"><span
+                    class="material-symbols-outlined">format_align_center</span></button>
+            <button class="tool-button" data-command="justifyRight" title="Align Right"><span
+                    class="material-symbols-outlined">format_align_right</span></button>
+
+            <div style="width: 1px; height: 24px; background: var(--color-toolbar-border); margin: auto 4px;"></div>
+
+            <button class="tool-button" data-command="insertUnorderedList" title="Bullet List"><span
+                    class="material-symbols-outlined">format_list_bulleted</span></button>
+            <button class="tool-button" data-command="insertOrderedList" title="Numbered List"><span
+                    class="material-symbols-outlined">format_list_numbered</span></button>
+
+            <div style="width: 1px; height: 24px; background: var(--color-toolbar-border); margin: auto 4px;"></div>
+
+            <button class="tool-button" data-command="createLink" title="Insert Link"><span
+                    class="material-symbols-outlined">link</span></button>
+            <input type="file" id="imageInput" accept="image/*" style="display:none;" />
+            <button class="tool-button" id="imageBtn" title="Insert Image"><span
+                    class="material-symbols-outlined">image</span></button>
+        </div>
     </header>
     <div id="pages-container">
         <div class="page" contenteditable="true" spellcheck="true"></div>

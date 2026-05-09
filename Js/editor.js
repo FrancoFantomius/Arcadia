@@ -42,21 +42,96 @@ document.addEventListener('DOMContentLoaded', () => {
         return getPages().at(-1);
     }
 
+    function findParentPage(node) {
+        while (node && !node.classList?.contains('page')) {
+            node = node.parentNode;
+        }
+        return node;
+    }
+
     // --- Overflow detection & pagination ---
     function checkOverflow() {
         const pages = getPages();
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
-            while (page.scrollHeight > page.clientHeight && page.childNodes.length > 1) {
-                // Get or create next page
-                let next = pages[i + 1];
-                if (!next) {
-                    next = createPage();
-                    pages.push(next);
+            
+            let next = pages[i + 1];
+            if (!next && page.scrollHeight > page.clientHeight) {
+                next = createPage();
+                pages.push(next);
+            }
+
+            while (page.scrollHeight > page.clientHeight && page.childNodes.length > 0) {
+                const lastChild = page.lastChild;
+
+                if (lastChild.nodeType === Node.TEXT_NODE) {
+                    const words = lastChild.textContent.split(/(\s+)/);
+                    const movedText = [];
+                    while (words.length > 0 && page.scrollHeight > page.clientHeight) {
+                        movedText.unshift(words.pop());
+                        lastChild.textContent = words.join('');
+                    }
+                    if (movedText.length > 0) {
+                        const newTextNode = document.createTextNode(movedText.join(''));
+                        next.insertBefore(newTextNode, next.firstChild);
+                    }
+                    if (lastChild.textContent === '') lastChild.remove();
+                    continue;
                 }
-                // Move the last child node to the beginning of the next page
-                const overflow = page.lastChild;
-                next.insertBefore(overflow, next.firstChild);
+
+                if (lastChild.nodeType === Node.ELEMENT_NODE) {
+                    // Do not split unbreakable elements
+                    if (['IMG', 'BR', 'HR', 'TABLE'].includes(lastChild.tagName)) {
+                        next.insertBefore(lastChild, next.firstChild);
+                        continue;
+                    }
+
+                    let targetNode = next.firstChild;
+                    // Only reuse targetNode if it's specifically marked as a split continuation
+                    if (!targetNode || targetNode.tagName !== lastChild.tagName || !targetNode.hasAttribute('data-split')) {
+                        targetNode = lastChild.cloneNode(false);
+                        targetNode.setAttribute('data-split', 'true');
+                        next.insertBefore(targetNode, next.firstChild);
+                    }
+
+                    let splitHappened = false;
+                    while (lastChild.childNodes.length > 0 && page.scrollHeight > page.clientHeight) {
+                        const innerLast = lastChild.lastChild;
+
+                        if (innerLast.nodeType === Node.TEXT_NODE) {
+                            const words = innerLast.textContent.split(/(\s+)/);
+                            const movedText = [];
+                            
+                            while (words.length > 0 && page.scrollHeight > page.clientHeight) {
+                                movedText.unshift(words.pop());
+                                innerLast.textContent = words.join('');
+                            }
+                            
+                            if (movedText.length > 0) {
+                                const newTextNode = document.createTextNode(movedText.join(''));
+                                targetNode.insertBefore(newTextNode, targetNode.firstChild);
+                                splitHappened = true;
+                            }
+                            if (innerLast.textContent === '') innerLast.remove();
+                        } else {
+                            targetNode.insertBefore(innerLast, targetNode.firstChild);
+                            splitHappened = true;
+                        }
+                    }
+
+                    if (lastChild.childNodes.length === 0) {
+                        lastChild.remove();
+                    } else if (!splitHappened) {
+                        // Could not split further (e.g. single giant word)
+                        next.insertBefore(lastChild, next.firstChild);
+                        // If we moved the whole thing, remove the empty targetNode we created
+                        if (targetNode.childNodes.length === 0) {
+                            targetNode.remove();
+                        }
+                    }
+                } else {
+                    next.insertBefore(lastChild, next.firstChild);
+                }
             }
         }
         // Clean up empty trailing pages (keep at least one)
@@ -79,10 +154,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // Try pulling content from the next page into this page
             while (next.firstChild && page.scrollHeight <= page.clientHeight) {
                 const child = next.firstChild;
-                page.appendChild(child);
-                // If it now overflows, put it back
+                
+                // Check if we can merge it with page.lastChild
+                const lastChild = page.lastChild;
+                if (lastChild && lastChild.nodeType === Node.ELEMENT_NODE && 
+                    child.nodeType === Node.ELEMENT_NODE && 
+                    lastChild.tagName === child.tagName) {
+                    
+                    // Merge children
+                    while (child.firstChild) {
+                        lastChild.appendChild(child.firstChild);
+                    }
+                    child.remove();
+                    
+                    // Normalize to combine adjacent text nodes
+                    lastChild.normalize();
+                } else {
+                    page.appendChild(child);
+                }
+                
                 if (page.scrollHeight > page.clientHeight) {
-                    next.insertBefore(child, next.firstChild);
                     break;
                 }
             }
@@ -99,10 +190,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Bind events on each page ---
+    function saveCursor() {
+        const sel = window.getSelection();
+        if (!sel.rangeCount) return null;
+        const range = sel.getRangeAt(0);
+        const marker = document.createElement('span');
+        marker.id = '_arcadia_cursor';
+        marker.style.display = 'none';
+        range.insertNode(marker);
+        return marker;
+    }
+
+    function restoreCursor(marker) {
+        if (!marker || !marker.parentNode) return;
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.setStartAfter(marker);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        marker.remove();
+    }
+
     function bindPageEvents(page) {
         page.addEventListener('input', () => {
+            const marker = saveCursor();
             checkOverflow();
             checkUnderflow();
+            restoreCursor(marker);
             saveContent();
             updateActiveStates();
         });
@@ -170,9 +285,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Toolbar Command Execution ---
     const exec = (command, value = null) => {
-        document.execCommand(command, false, value);
-        const active = getActivePage();
-        if (active) active.focus();
+        const sel = window.getSelection();
+        const pages = getPages();
+
+        // Check if the selection spans multiple pages
+        let multiPage = false;
+        if (sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            const startPage = findParentPage(range.startContainer);
+            const endPage = findParentPage(range.endContainer);
+
+            if (startPage && endPage && startPage !== endPage) {
+                multiPage = true;
+                const startIdx = pages.indexOf(startPage);
+                const endIdx = pages.indexOf(endPage);
+                // Save boundary info before we manipulate selections
+                const origStartContainer = range.startContainer;
+                const origStartOffset = range.startOffset;
+                const origEndContainer = range.endContainer;
+                const origEndOffset = range.endOffset;
+
+                for (let i = startIdx; i <= endIdx; i++) {
+                    const page = pages[i];
+                    const pageRange = document.createRange();
+
+                    if (i === startIdx) {
+                        pageRange.setStart(origStartContainer, origStartOffset);
+                        if (page.lastChild) {
+                            pageRange.setEndAfter(page.lastChild);
+                        } else {
+                            pageRange.setEnd(page, page.childNodes.length);
+                        }
+                    } else if (i === endIdx) {
+                        if (page.firstChild) {
+                            pageRange.setStartBefore(page.firstChild);
+                        } else {
+                            pageRange.setStart(page, 0);
+                        }
+                        pageRange.setEnd(origEndContainer, origEndOffset);
+                    } else {
+                        pageRange.selectNodeContents(page);
+                    }
+
+                    page.focus();
+                    sel.removeAllRanges();
+                    sel.addRange(pageRange);
+                    document.execCommand(command, false, value);
+                }
+
+                // Restore cross-page selection so it stays visible
+                // and subsequent commands continue to work across all pages
+                const updatedPages = getPages();
+                const first = updatedPages[startIdx];
+                const last = updatedPages[Math.min(endIdx, updatedPages.length - 1)];
+                if (first && last) {
+                    const restoreRange = document.createRange();
+                    restoreRange.setStartBefore(first.firstChild || first);
+                    restoreRange.setEndAfter(last.lastChild || last);
+                    sel.removeAllRanges();
+                    sel.addRange(restoreRange);
+                }
+            }
+        }
+
+        if (!multiPage) {
+            document.execCommand(command, false, value);
+            const active = getActivePage();
+            if (active) active.focus();
+        }
+
         updateActiveStates();
         // Re-check pagination after formatting changes
         requestAnimationFrame(() => {
@@ -253,6 +434,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.queryCommandState('italic')) document.querySelector('[data-command="italic"]')?.classList.add('active');
         if (document.queryCommandState('underline')) document.querySelector('[data-command="underline"]')?.classList.add('active');
     }
+
+    // --- Select All across pages ---
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            const pages = getPages();
+            if (pages.length <= 1) return; // let native behaviour handle single page
+            e.preventDefault();
+            const first = pages[0];
+            const last = pages[pages.length - 1];
+            const sel = window.getSelection();
+            const range = document.createRange();
+            range.setStartBefore(first.firstChild || first);
+            range.setEndAfter(last.lastChild || last);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    });
 
     // --- Init ---
     // Bind events on the first page
