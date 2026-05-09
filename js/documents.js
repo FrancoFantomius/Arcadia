@@ -98,7 +98,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lastChild = page.lastChild;
 
                 if (lastChild.nodeType === Node.TEXT_NODE) {
-                    splitTextNodeToFit(lastChild, next);
+                    const moved = splitTextNodeToFit(lastChild, next);
+                    if (!moved) {
+                        next.insertBefore(lastChild, next.firstChild);
+                    }
                     continue;
                 }
 
@@ -122,7 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         const innerLast = lastChild.lastChild;
 
                         if (innerLast.nodeType === Node.TEXT_NODE) {
-                            splitHappened = splitTextNodeToFit(innerLast, targetNode) || splitHappened;
+                            const moved = splitTextNodeToFit(innerLast, targetNode);
+                            if (moved) {
+                                splitHappened = true;
+                            } else {
+                                targetNode.insertBefore(innerLast, targetNode.firstChild);
+                                splitHappened = true;
+                            }
                         } else {
                             targetNode.insertBefore(innerLast, targetNode.firstChild);
                             splitHappened = true;
