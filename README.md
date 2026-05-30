@@ -1,3 +1,6 @@
+The project is now converging in <a href="https://github.com/FrancoFantomius/Scriben" > https://github.com/FrancoFantomius/Scriben </a> this repository is now archived.
+
+-----
 # Arcadia
 
 Arcadia is a premium, web-based WYSIWYG document editor designed for a clean, distraction-free writing experience. It mimics the familiar layout of desktop word processors (like MS Word) while operating entirely within the browser.
